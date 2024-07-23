@@ -36,6 +36,57 @@ namespace Algorithm
             _board = board;
 
             //RightHand(); 우수법 오른손의 법칙으로 
+            BFS();
+        }
+        void BFS()
+        {
+            int[] deltaY = new int[] { -1, 0, 1, 0 }; 
+            int[] deltaX = new int[] { 0, -1, 0 ,1 }; 
+
+            bool[,] found = new bool[_board.Size,_board.Size];
+            Pos[,] parent = new Pos[_board.Size,_board.Size];
+
+            Queue<Pos> q = new Queue<Pos>();
+            q.Enqueue(new Pos(PosY, PosX));
+            found[PosY,PosX] = true;
+            parent[PosY, PosX] = new Pos(PosY, PosX);// 처음은 부모가 없으니 자신이 부모
+
+            while (q.Count > 0)
+            {
+                Pos pos = q.Dequeue();
+                int nowY = pos.Y;
+                int nowX = pos.X;
+
+                for(int i = 0; i < 4; i++)
+                {
+                    int nextY = nowY + deltaY[i];
+                    int nextX = nowX + deltaX[i];
+
+                    if (nextX < 0 || nextX >= _board.Size || nextY < 0 || nextY >= _board.Size) // 크기 벗어나면 넘겨
+                        continue;
+                    if (_board.Tile[nextY, nextX] == Board.TileType.Wall)
+                        continue;
+                    if (found[nextY, nextX])// 이미 발견한 길이면 넘겨 
+                        continue;
+
+                    q.Enqueue(new Pos(nextY, nextX));
+                    found[nextY, nextX] = true;
+                    parent[nextY, nextX] = new Pos(nowY, nowX);
+                }
+            }
+
+            int y = _board.DestY;
+            int x = _board.DestX;
+
+            while (parent[y, x].Y != y || parent[y, x].X != x) // 부모가 도착점이면 더이상 안해도 되니까
+            {
+                _points.Add(new Pos(y, x));
+                Pos pos = parent[y, x];
+                y = pos.Y;
+                x = pos.X;
+            }
+            _points.Add(new Pos(y, x));
+            _points.Reverse();// 리스트를 뒤집어서 처음부터 시작
         }
 
         private void RightHand()
