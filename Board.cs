@@ -6,7 +6,7 @@ namespace Algorithm
 {
 	class Board
 	{
-		const char CIRCLE = '\u25cf';
+		const char CIRCLE = '\u25a0';
 		public TileType[,] Tile { get; private set; }
 		public int Size { get; private set; }
 

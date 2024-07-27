@@ -36,19 +36,120 @@ namespace Algorithm
             _board = board;
 
             //RightHand(); 우수법 오른손의 법칙으로 
-            BFS();
+            //BFS();
+            AStar();
+            
         }
+
+        struct PQNode : IComparable<PQNode>
+        {
+            public int F;
+            public int G;
+            public int Y;
+            public int X;
+
+            public int CompareTo(PQNode other)
+            {
+                if(F == other.F)
+                    return 0;
+                return F < other.F ? 1 : -1;
+                throw new NotImplementedException();
+            }
+        }
+
+        void AStar()
+        {
+            int[] deltaY = new int[] { -1, 0, 1, 0 };
+            int[] deltaX = new int[] { 0, -1, 0, 1 };
+            int[] cost = new int[] {1, 1, 1, 1 };   
+
+            // 점수 매기기 
+            // F = G + H
+            // F = 최종 점수 (작을 수록 좋음, 경로에 따라 달라짐) 
+            // G = 시작점에서 해당 좌표까지 이동하는데 드는 비용 (작을 수록 좋음, 경로에 따라 달라짐)
+            // H = 목적지에 얼마나 가까운지 (작을 수록 좋음, 고정) 
+
+            //(y,x) 이미 방문했는지 여부 (방문 = closed 상태)
+            bool[,] closed = new bool[_board.Size,_board.Size]; //CloseList
+
+            //(y,x) 가는 길을 한 번이라도 발견했는지 
+            // 발견X => MaxValue
+            // 발견O => F = G + H
+            int[,] open = new int[_board.Size, _board.Size]; //OpenList
+
+            for(int y =  0; y < _board.Size; y++) 
+                for(int x = 0; x < _board.Size; x++)
+                    open[y, x] = Int32.MaxValue;
+
+            Pos[,] parent = new Pos[_board.Size, _board.Size];
+
+            // 오픈리스트에 있는 정보들 중에서, 가장 좋은 후보를 빠르게 뽑아오기 위한 도구 
+            PriorityQueue<PQNode> pq = new PriorityQueue<PQNode>(); 
+
+            // 시작점 발견 (예약 진행) 시작 점이기에 G = 0, H만 계산 
+            open[PosY,PosX] = Math.Abs(_board.DestY - PosY) + Math.Abs(_board.DestX - PosX);
+            pq.Push(new PQNode() { F = Math.Abs(_board.DestY - PosY) + Math.Abs(_board.DestX - PosX), G = 0, Y = PosY, X = PosX });
+            parent[PosY,PosX] = new Pos(PosY,PosX); // 초기점이기에 자신을 넣음.
+
+            while(pq.Count > 0)
+            {
+                // 제일 좋은 후보를 찾는다. 
+                PQNode node = pq.Pop();
+                // 동일한 좌표를 여러 경로를 찾아서, 더 빠른 경로로 인해서 이미 방문(closed)된 경우 스킵 
+                if (closed[node.Y, node.X])
+                    continue;
+
+                // 방문한다.
+                closed[node.Y, node.X] = true;
+                // 목적지 도착했으면 바로 종료 
+                if (node.Y == _board.DestY && node.X == _board.DestX)
+                    break;  
+
+                // 상하좌우 등 이동할 수 있는 좌표인지 확인해서 예약(open)한다.
+                for(int i = 0; i < deltaY.Length; i++)
+                {
+                    int nextY = node.Y + deltaY[i];
+                    int nextX = node.X + deltaX[i];
+                    
+                    // 유효 범위를 벗어났으면 스킵
+                    if (nextX < 0 || nextX >= _board.Size || nextY < 0 || nextY >= _board.Size) // 크기 벗어나면 넘겨
+                        continue;
+                    // 벽으로 막혀서 갈 수 없으면 스킵 
+                    if (_board.Tile[nextY, nextX] == Board.TileType.Wall)
+                        continue;
+                    // 이미 방문한 곳이면 스킵 
+                    if (closed[nextY, nextX])
+                        continue;
+
+                    // 비용 계산 
+                    int g = node.G + cost[i];
+                    int h = Math.Abs(_board.DestY - nextY) + Math.Abs(_board.DestX - nextX);
+                    // 다른 경로에서 더 빠른 길 이미 찾았으면 스킵 
+                    if (open[nextY, nextX] < g + h) // 계산 한것보다 지금이 더 빨라 
+                        continue;
+
+                    // 예약 진행 
+                    open[nextY, nextX] = g + h;
+                    pq.Push(new PQNode() { F = g + h, G = g, Y= nextY, X = nextX });
+                    parent[nextY, nextX] = new Pos(node.Y, node.X);
+
+                }
+                
+            }
+            CalcPathFromParent(parent);
+        }
+    
         void BFS()
         {
-            int[] deltaY = new int[] { -1, 0, 1, 0 }; 
-            int[] deltaX = new int[] { 0, -1, 0 ,1 }; 
+            int[] deltaY = new int[] { -1, 0, 1, 0 };
+            int[] deltaX = new int[] { 0, -1, 0, 1 };
 
-            bool[,] found = new bool[_board.Size,_board.Size];
-            Pos[,] parent = new Pos[_board.Size,_board.Size];
+            bool[,] found = new bool[_board.Size, _board.Size];
+            Pos[,] parent = new Pos[_board.Size, _board.Size];
 
             Queue<Pos> q = new Queue<Pos>();
             q.Enqueue(new Pos(PosY, PosX));
-            found[PosY,PosX] = true;
+            found[PosY, PosX] = true;
             parent[PosY, PosX] = new Pos(PosY, PosX);// 처음은 부모가 없으니 자신이 부모
 
             while (q.Count > 0)
@@ -57,7 +158,7 @@ namespace Algorithm
                 int nowY = pos.Y;
                 int nowX = pos.X;
 
-                for(int i = 0; i < 4; i++)
+                for (int i = 0; i < 4; i++)
                 {
                     int nextY = nowY + deltaY[i];
                     int nextX = nowX + deltaX[i];
@@ -75,6 +176,11 @@ namespace Algorithm
                 }
             }
 
+            CalcPathFromParent(parent);
+        }
+
+        private void CalcPathFromParent(Pos[,] parent)
+        {
             int y = _board.DestY;
             int x = _board.DestX;
 
@@ -134,7 +240,12 @@ namespace Algorithm
 		public void Update(int deltaTick)
 		{
 			if (_lastIndex >= _points.Count)
-				return;
+            {
+                _lastIndex = 0;
+                _points.Clear();
+                _board.Initialize(_board.Size, this);
+                Initialize(1, 1, _board);
+            }
 
 			_sumTick += deltaTick;
 			if (_sumTick >= MOVE_TICK)
